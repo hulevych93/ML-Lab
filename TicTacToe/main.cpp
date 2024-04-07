@@ -11,14 +11,10 @@ const double DISCOUNT_FACTOR = 0.8;
 
 void ticTacToeLearningOfFirstPlayer(QValuesAgent& firstPlayer, Agent& secondPlayer, const int episodes)
 {
-    auto now = std::chrono::steady_clock::now();
     for (int i = 0; i < episodes; ++i) {
 
         if(i % 10 == 0) {
-            const auto point = std::chrono::steady_clock::now();
-            const auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(point - now);
-            std::cout << i << ": " << diff.count() << " mills" << std::endl;
-             now = point;
+            std::cout << i << std::endl;
         }
 
         const auto expRate = double(episodes - i) / episodes;
@@ -52,7 +48,7 @@ void ticTacToeLearningOfFirstPlayer(QValuesAgent& firstPlayer, Agent& secondPlay
     }
 }
 
-void ticTacToeLearningOfSecondPlayer(Agent& firstPlayer, QValuesAgent& secondPlayer, const int episodes)
+void ticTacToeLearningOfSecondPlayer(QValuesAgent& secondPlayer, Agent& firstPlayer, const int episodes)
 {
     auto now = std::chrono::steady_clock::now();
     for (int i = 0; i < episodes; ++i) {
@@ -113,6 +109,10 @@ void humanMove(Board& game, const char player) {
     }
 }
 
+const char getOponent(const char player) {
+    return (player == Board::FIRST_PLAYER) ? Board::SECOND_PLAYER : Board::FIRST_PLAYER;
+}
+
 void playTicTacToe(const char humanPlayer, const Agent& aiAgent) {
     Board game;
 
@@ -140,8 +140,41 @@ void playTicTacToe(const char humanPlayer, const Agent& aiAgent) {
             break;
         }
 
-        currentPlayer = (currentPlayer == Board::FIRST_PLAYER) ? Board::SECOND_PLAYER : Board::FIRST_PLAYER; // Switch players
+        currentPlayer = getOponent(currentPlayer); // Switch players
     }
+}
+
+void testTicTacToeAgent(const char targetPlayer, const Agent& aiAgent, const Agent& opponent) {
+    int wins = 0;
+    int draws = 0;
+    static const int GamesCount = 10000U;
+
+    for(int i = 0; i < GamesCount; ++i) {
+        Board game;
+        char currentPlayer = Board::FIRST_PLAYER;
+        while (!game.isOver()) {
+            if (currentPlayer == targetPlayer) {
+                const auto& action = aiAgent.chooseAction(game);
+                game.move(action, currentPlayer);
+            } else {
+                const auto& action = opponent.chooseAction(game);
+                game.move(action, currentPlayer);
+            }
+
+            if (game.checkWin(targetPlayer)) {
+                ++wins;
+                break;
+            } else if (game.checkDraw()) {
+                ++draws;
+                break;
+            }
+
+            currentPlayer = getOponent(currentPlayer); // Switch players
+        }
+    }
+
+    std::cout << "WinRate: " << double(wins) / GamesCount << std::endl;
+    std::cout << "WinRate(+Draws): " << double(wins + draws) / GamesCount << std::endl;
 }
 
 int main() {
@@ -159,23 +192,29 @@ int main() {
     }
 
     QValuesAgent aiAgent;
-    RandomAgent randAgent;
+    Agent* opponent;
+
+    if(0) {
+        opponent = new MinMaxAgent{humanPlayer};
+    } else {
+        opponent = new RandomAgent{};
+    }
 
     if(humanPlayer == Board::FIRST_PLAYER) {
-        MinMaxAgent firstPlayer{Board::FIRST_PLAYER};
-
-        ticTacToeLearningOfSecondPlayer(randAgent, aiAgent, NUM_EPISODES);
+        ticTacToeLearningOfSecondPlayer(aiAgent, *opponent, NUM_EPISODES);
 
         std::ofstream debug("second_player_qtree.txt");
         aiAgent.print(debug);
     } else {
-        MinMaxAgent secondPlayer{Board::SECOND_PLAYER};
-        ticTacToeLearningOfFirstPlayer(aiAgent, randAgent, NUM_EPISODES);
+        ticTacToeLearningOfFirstPlayer(aiAgent, *opponent, NUM_EPISODES);
 
         std::ofstream debug("first_player_qtree.txt");
         aiAgent.print(debug);
     }
 
-    playTicTacToe(humanPlayer, aiAgent);
+    testTicTacToeAgent(getOponent(humanPlayer), aiAgent, *opponent);
+
+    delete opponent;
+
     return 0;
 }

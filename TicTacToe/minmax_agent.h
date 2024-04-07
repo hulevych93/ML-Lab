@@ -8,7 +8,6 @@
 #include <limits>
 #include <sstream>
 #include <cmath>
-#include <chrono>
 
 #include "game.h"
 #include "agent.h"
@@ -24,14 +23,7 @@ public:
         int bestScore = -999;
         QAction bestMove;
 
-        const auto now = std::chrono::steady_clock::now();
-
         auto board = game.getBoard();
-
-//        if(board[1][1] == Board::EMPTY_CELL) {
-//            return {1, 1};
-//        }
-
         for (int i = 0; i < Board::BOARD_SIZE; ++i) {
             for (int j = 0; j < Board::BOARD_SIZE; ++j) {
                 if (board[i][j] == Board::EMPTY_CELL) {
@@ -44,12 +36,6 @@ public:
                     }
                 }
             }
-        }
-
-        const auto point = std::chrono::steady_clock::now();
-        const auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(point - now);
-        if(diff.count() > 10) {
-            std::abort();
         }
 
         return bestMove;
